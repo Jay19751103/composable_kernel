@@ -43,12 +43,23 @@ set_directory_properties(PROPERTIES CMAKE_CONFIGURE_DEPENDS "${CODE_GEN_SCRIPTS}
 list(JOIN INST_TARGETS , FMHA_TARGETS_ARG)
 
 string(REPLACE ";" "," FMHA_FWD_APIS "${FMHA_FWD_ENABLE_APIS}")
+
+# Allow narrowing the generated FWD instance set (for fast, targeted tuning builds).
+# Defaults reproduce the original full coverage.
+set(FMHA_FWD_OPTDIM "32,64,80,128,256" CACHE STRING "comma-separated hdims to generate FWD instances for")
+set(FMHA_FWD_RECEIPT "0" CACHE STRING "codegen receipt for FWD instances (0=default, 2=flash-attn integration)")
+set(FMHA_FWD_FILTER  ""  CACHE STRING "fnmatch filter to restrict generated FWD instances")
+
 set(FMHA_FWD_CODE_GEN_COMMON_ARGS
   ${CMAKE_CURRENT_LIST_DIR}/generate.py
   --targets ${FMHA_TARGETS_ARG}
   --api ${FMHA_FWD_APIS}
-  --optdim 32,64,80,128,256
+  --receipt ${FMHA_FWD_RECEIPT}
+  --optdim ${FMHA_FWD_OPTDIM}
 )
+if(NOT FMHA_FWD_FILTER STREQUAL "")
+  list(APPEND FMHA_FWD_CODE_GEN_COMMON_ARGS --filter ${FMHA_FWD_FILTER})
+endif()
 set(FMHA_BWD_CODE_GEN_COMMON_ARGS
   ${CMAKE_CURRENT_LIST_DIR}/generate.py
   --targets ${FMHA_TARGETS_ARG}
@@ -235,6 +246,17 @@ add_executable(${EXAMPLE_FMHA_FWD} EXCLUDE_FROM_ALL example_fmha_fwd.cpp)
 target_link_libraries(${EXAMPLE_FMHA_FWD} ${FMHA_FWD_INSTANCES})
 target_include_directories(${EXAMPLE_FMHA_FWD} PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 set_property(TARGET ${EXAMPLE_FMHA_FWD} PROPERTY HIP_ARCHITECTURES ${INST_TARGETS})
+
+# C-ABI shared library exposing ck_tile FMHA fwd for out-of-tree integration
+# (e.g. llama.cpp ggml-cuda/HIP backend). Links the generated fwd instances +
+# fmha_fwd_api.cpp (which are part of ${FMHA_FWD_INSTANCES}).
+set(CK_TILE_FMHA_SHARED "ck_tile_fmha")
+add_library(${CK_TILE_FMHA_SHARED} SHARED EXCLUDE_FROM_ALL ck_tile_fmha_c_api.cpp)
+set_source_files_properties(ck_tile_fmha_c_api.cpp PROPERTIES LANGUAGE HIP)
+target_link_libraries(${CK_TILE_FMHA_SHARED} PRIVATE ${FMHA_FWD_INSTANCES})
+target_include_directories(${CK_TILE_FMHA_SHARED} PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+target_compile_options(${CK_TILE_FMHA_SHARED} PRIVATE ${FMHA_FWD_PRIVATE_COMPILE_OPTIONS})
+set_property(TARGET ${CK_TILE_FMHA_SHARED} PROPERTY HIP_ARCHITECTURES ${INST_TARGETS})
 
 message(DEBUG "adding example ${EXAMPLE_FMHA_BWD}")
 # not using add_example_executable() to add this target, since we don't want this to be included in
