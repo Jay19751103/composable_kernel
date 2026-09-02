@@ -1463,7 +1463,6 @@ def get_product(receipt: int) -> Product:
             cond &= kernel_ctx.pipeline.F_bias in ["no", "alibi", "bias"]
             cond &= kernel_ctx.pipeline.F_qscale == "no"
             cond &= kernel_ctx.pipeline.F_skip == "f"
-            cond &= kernel_ctx.pipeline.F_sink == "f"
             # FlashAttention direct fwd wrappers always use softcap disabled and LSE enabled.
             cond &= kernel_ctx.pipeline.F_logits == "f"
             cond &= kernel_ctx.pipeline.F_lse == "t"

@@ -38,6 +38,7 @@ typedef struct ck_fa_params {
     const void* bias_ptr; // additive bias/mask [seqlen_q, seqlen_k], or NULL
     void*       o_ptr;
     void*       lse_ptr;  // scratch [batch, nhead_q, seqlen_q] fp32, or NULL if has_lse==0
+    const void* sink_ptr; // per-head attention sink logits [nhead_q] fp32 (log-space), or NULL
 
     // strides (elements)
     int64_t stride_q, stride_k, stride_v, stride_o, stride_bias;

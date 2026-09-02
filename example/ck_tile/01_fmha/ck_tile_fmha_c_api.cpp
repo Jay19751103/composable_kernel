@@ -27,7 +27,7 @@ inline void fill_traits(const ck_fa_params* p, fmha_fwd_traits& t) {
     t.has_dropout         = false;
     t.qscale_type         = quant_scale_enum::no_scale;
     t.skip_min_seqlen_q   = false;
-    t.has_sink            = false;
+    t.has_sink            = (p->sink_ptr != nullptr);
 }
 
 inline void fill_args(const ck_fa_params* p, fmha_fwd_args& a) {
@@ -37,6 +37,7 @@ inline void fill_args(const ck_fa_params* p, fmha_fwd_args& a) {
     a.bias_ptr = p->bias_ptr;
     a.o_ptr    = p->o_ptr;
     a.lse_ptr  = p->lse_ptr;
+    a.sink_ptr = p->sink_ptr;
 
     a.q_descale_ptr = nullptr;
     a.k_descale_ptr = nullptr;
@@ -52,7 +53,6 @@ inline void fill_args(const ck_fa_params* p, fmha_fwd_args& a) {
     a.block_scale_seqstart_q_ptr = nullptr;
     a.block_scale_seqstart_k_ptr = nullptr;
     a.seqstart_v_scale_ptr     = nullptr;
-    a.sink_ptr                 = nullptr;
 
     a.seqlen_q         = p->seqlen_q;
     a.seqlen_k         = p->seqlen_k;
@@ -133,7 +133,8 @@ extern "C" int ck_tile_fmha_fwd(const ck_fa_params* p, void* stream) {
 
 extern "C" int ck_tile_fmha_fwd_supported(const ck_fa_params* p) {
     const bool dt_ok  = (p->dtype == CK_FA_FP16 || p->dtype == CK_FA_BF16);
-    const bool hd_ok  = (p->hdim_q == 128 && p->hdim_v == 128) ||
+    const bool hd_ok  = (p->hdim_q == 64  && p->hdim_v == 64)  ||
+                        (p->hdim_q == 128 && p->hdim_v == 128) ||
                         (p->hdim_q == 256 && p->hdim_v == 256);
     return (dt_ok && hd_ok) ? 1 : 0;
 }
