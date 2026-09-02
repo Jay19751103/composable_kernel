@@ -51,6 +51,10 @@ inline constexpr int32x16_t to_wmma_scale_arg(const T& vec)
 
 } // namespace scale::detail
 
+// GFX1250: these specialisations use gfx1250-only WMMA builtins, so only parse
+// them when compiling for that target (matches wmma_gfx12.hpp).
+#if defined(__gfx125__)
+
 // clang-format off
 #define WMMA_SCALE_IMPL(A_TYPE, B_TYPE, NUM_ACC_A, NUM_ACC_B, OP_FAMILY, INSTRUCTION, SCALE_TYPE)                                    \
     template <typename CompilerTarget>                                                                                               \
@@ -206,5 +210,7 @@ WMMA_SCALE16_IMPL(pk_fp4_t,    pk_fp4_t,    1, 1)
 #undef WMMA_SCALE16_IMPL
 #undef WMMA_SCALE_IMPL
 // clang-format on
+
+#endif // __gfx125__
 
 } // namespace ck_tile::core::arch::mma
